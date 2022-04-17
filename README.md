@@ -55,7 +55,7 @@ This app has been set up with the following:
 
 ### Project setup
 ```
-npm install
+npm ci
 ```
 <br/>
 
