@@ -24,12 +24,8 @@ export const Trans = {
   },
 
   getClientLocale() {
-    return (
-      getState('locale') ||
-      Trans.defaultLocale ||
-      window.navigator.language ||
-      window.navigator.userLanguage
-    )
+    if (Trans.isLocaleSupported(getState('locale'))) return getState('locale')
+    else Trans.defaultLocale
   },
 
   setClientLocale(locale) {
@@ -37,8 +33,6 @@ export const Trans = {
   },
 
   loadLocaleFile(locale) {
-    let direction = locale == 'ar' ? 'rtl' : 'ltr'
-    // import(`@/assets/sass/main-${direction}.scss`)
     return import(`@/locales/${locale}.json`)
   },
 
@@ -55,7 +49,7 @@ export const Trans = {
       .setAttribute('dir', locale == 'ar' ? 'rtl' : 'ltr')
 
     Trans.currentLocale = locale
-    
+
     saveState('locale', locale)
 
     return locale
@@ -65,9 +59,27 @@ export const Trans = {
     if (!Trans.isLocaleSupported(locale))
       return Promise.reject(new Error('Locale not supported'))
 
-    await Trans.loadLocaleFile(locale).then((msgs) => {
-      i18n.global.setLocaleMessage(locale, msgs.default || msgs)
-      return Trans.setI18nLocaleInServices(locale)
-    })
+    const msgs = await Trans.loadLocaleFile(locale)
+    i18n.global.setLocaleMessage(locale, msgs.default || msgs)
+    return Promise.resolve(Trans.setI18nLocaleInServices(locale))
+  },
+
+  routeMiddleware(to, from, next) {
+    const locale = to.params.locale
+    if (!Trans.isLocaleSupported(locale)) {
+      return next(Trans.getClientLocale())
+    } else {
+      return Trans.changeLocale(locale).then(() => next())
+    }
+  },
+
+  i18nRoute(to) {
+    return {
+      ...to,
+      params: {
+        locale: this.currentLocale,
+        ...to.params,
+      },
+    }
   },
 }
